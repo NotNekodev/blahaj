@@ -23,7 +23,10 @@ module.exports = {
             const conf = await getUserConfig(target.id);
             const embed = new EmbedBuilder()
                 .setTitle(`User config for ${target.username}`)
-                .setDescription(`participate: ${conf.participate}\npinned: ${conf.pinned}`)
+                .addFields(
+                    { name: 'Participate', value: conf.participate ? 'Yes' : 'No', inline: true },
+                    { name: 'Pinged', value: conf.pinged ? 'Yes' : 'No', inline: true }
+                )
                 .setTimestamp();
             await interaction.reply({ embeds: [embed], ephemeral: true });
         } catch (err) {

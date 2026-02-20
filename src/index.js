@@ -115,17 +115,17 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isStringSelectMenu && interaction.isStringSelectMenu()) {
         const id = interaction.customId;
         try {
-            if (id === 'userconf_select_participate' || id === 'userconf_select_pinned') {
+            if (id === 'userconf_select_participate' || id === 'userconf_select_pinged') {
                 const val = interaction.values && interaction.values[0];
                 const userId = interaction.user.id;
                 const draft = userConfigDrafts.get(userId) || {};
                 if (id === 'userconf_select_participate') {
                     draft.participate = (val === 'true');
                 } else {
-                    draft.pinned = (val === 'true');
+                    draft.pinged = (val === 'true');
                 }
                 userConfigDrafts.set(userId, draft);
-                await interaction.reply({ content: `Choice saved temporarily. Press Save to persist.`, ephemeral: true });
+                await interaction.reply({ content: `Set ${id.endsWith('participate') ? 'participate' : 'pinged'} to ${val}. Click Save to apply changes.`, ephemeral: true });
             }
         } catch (err) {
             logger.error('Error handling userconf select:', err);
@@ -142,11 +142,11 @@ client.on('interactionCreate', async (interaction) => {
                 const draft = userConfigDrafts.get(userId) || {};
                 const cur = await getUserConfig(userId);
                 const participate = (typeof draft.participate === 'boolean') ? draft.participate : cur.participate;
-                const pinned = (typeof draft.pinned === 'boolean') ? draft.pinned : cur.pinned;
+                const pinged = (typeof draft.pinged === 'boolean') ? draft.pinged : cur.pinged;
                 try {
-                    await setUserConfig(userId, { participate, pinned });
+                    await setUserConfig(userId, { participate, pinged });
                     userConfigDrafts.delete(userId);
-                    await interaction.reply({ content: `Updated your config — participate: ${participate}, pinned: ${pinned}`, ephemeral: true });
+                    await interaction.reply({ content: `Updated your config — participate: ${participate}, pinged: ${pinged}`, ephemeral: true });
                 } catch (err) {
                     logger.error('Failed to save user config:', err);
                     await interaction.reply({ content: 'Failed to save configuration.', ephemeral: true });
@@ -166,7 +166,7 @@ client.on('interactionCreate', async (interaction) => {
         if (interaction.customId === 'userconf_modal') {
             try {
                 const participateVal = interaction.fields.getTextInputValue('participate') || 'true';
-                const pinnedVal = interaction.fields.getTextInputValue('pinned') || 'true';
+                const pingedVal = interaction.fields.getTextInputValue('pinned') || 'true';
 
                 const parseBool = (v) => {
                     if (typeof v !== 'string') return true;
@@ -175,11 +175,11 @@ client.on('interactionCreate', async (interaction) => {
                 };
 
                 const participate = parseBool(participateVal);
-                const pinned = parseBool(pinnedVal);
+                const pinged = parseBool(pingedVal);
 
-                await setUserConfig(interaction.user.id, { participate, pinned });
-                logger.info(`${interaction.user.tag} updated userconf via modal: participate=${participate}, pinned=${pinned}`);
-                await interaction.reply({ content: `Updated your config — participate: ${participate}, pinned: ${pinned}`, ephemeral: true });
+                await setUserConfig(interaction.user.id, { participate, pinged });
+                logger.info(`${interaction.user.tag} updated userconf via modal: participate=${participate}, pinged=${pinged}`);
+                await interaction.reply({ content: `Updated your config — participate: ${participate}, pinged: ${pinged}`, ephemeral: true });
             } catch (err) {
                 logger.error('Failed to handle userconf modal submit:', err);
                 try { await interaction.reply({ content: 'Failed to update configuration.', ephemeral: true }); } catch (e) { logger.error(e); }

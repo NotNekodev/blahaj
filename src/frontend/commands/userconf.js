@@ -20,15 +20,15 @@ module.exports = {
                 .setPlaceholder('Participate in leveling?')
                 .addOptions(...participateOptions);
 
-            const pinnedOptions = [
-                new StringSelectMenuOptionBuilder().setLabel('Yes').setValue('true').setDefault(cur.pinned === true),
-                new StringSelectMenuOptionBuilder().setLabel('No').setValue('false').setDefault(cur.pinned === false)
+            const pingedOptions = [
+                new StringSelectMenuOptionBuilder().setLabel('Yes').setValue('true').setDefault(cur.pinged === true),
+                new StringSelectMenuOptionBuilder().setLabel('No').setValue('false').setDefault(cur.pinged === false)
             ];
 
-            const pinnedSelect = new StringSelectMenuBuilder()
-                .setCustomId('userconf_select_pinned')
-                .setPlaceholder('Pinned by default?')
-                .addOptions(...pinnedOptions);
+            const pingedSelect = new StringSelectMenuBuilder()
+                .setCustomId('userconf_select_pinged')
+                .setPlaceholder('Pinged when leveling?')
+                .addOptions(...pingedOptions);
 
             const saveButton = new ButtonBuilder()
                 .setCustomId('userconf_save')
@@ -44,7 +44,7 @@ module.exports = {
                 content: 'Select your preferences, then press Save.',
                 components: [
                     new ActionRowBuilder().addComponents(participateSelect),
-                    new ActionRowBuilder().addComponents(pinnedSelect),
+                    new ActionRowBuilder().addComponents(pingedSelect),
                     new ActionRowBuilder().addComponents(saveButton, cancelButton)
                 ],
                 ephemeral: true

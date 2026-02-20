@@ -23,8 +23,8 @@ function initDB(dbPath) {
             if (!names.includes('participate')) {
                 _db.run("ALTER TABLE users ADD COLUMN participate INTEGER DEFAULT 1");
             }
-            if (!names.includes('pinned')) {
-                _db.run("ALTER TABLE users ADD COLUMN pinned INTEGER DEFAULT 1");
+            if (!names.includes('pinged')) {
+                _db.run("ALTER TABLE users ADD COLUMN pinged INTEGER DEFAULT 1");
             }
         });
     });
