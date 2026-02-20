@@ -16,6 +16,7 @@ This is the main part of the bot. Each instance on each guild needs it own confi
     "application_id": "XXXXXXXXX",
     "guild_id": "XXXXXXXXX",
     "log_channel_id": "XXXXXXXXX",
+    "log_file": "blahaj.log",
     "database_path": "./data/levels.db",
     "textXP": {
         "minGain": 10,
@@ -31,6 +32,7 @@ This is the main part of the bot. Each instance on each guild needs it own confi
 - `application_id`: The Application ID of the application (NOT OF THE BOT), needed to register slash commands
 - `guild_id`: The ID of the guild (server) the bot is operating in, needed to register the slash commands
 - `log_channel_id`: Channel ID of where to send logs of the Admin commands (i.e. /setxp) (recommended to be Administrator only!)
+- `log_file`: The file where to store more verbose logs. If not specified the file `blahaj.log` will be used as seen in the example config
 - `database_path`: Where to create the SQLite3 database (note that the parent directories already have to be created)
 - `textXP`: Config for text expirience gain
     - `minGain`: Minimum gain for each message in XP points
