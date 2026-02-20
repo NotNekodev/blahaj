@@ -3,7 +3,7 @@ const { Command } = require('commander');
 const fs = require('fs');
 const path = require('path');
 const { getKey, initConfig } = require('./backend/config.js');
-const { addTextXP, getUserXP } = require('./backend/algorithm.js');
+const { addTextXP, getUserXP, getUserConfig, setUserConfig } = require('./backend/algorithm.js');
 const { initDB } = require('./backend/sql.js');
 const loggerModule = require('./logger');
 
@@ -21,6 +21,7 @@ const logger = loggerModule.getLogger();
 initDB(getKey('database_path') || './levels.db');
 
 const usersCooldown = new Map();
+const userConfigDrafts = new Map();
 const TEXT_COOLDOWN = getKey('textXP').cooldown * 1000;
 
 const client = new Client({
@@ -111,6 +112,82 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+    if (interaction.isStringSelectMenu && interaction.isStringSelectMenu()) {
+        const id = interaction.customId;
+        try {
+            if (id === 'userconf_select_participate' || id === 'userconf_select_pinned') {
+                const val = interaction.values && interaction.values[0];
+                const userId = interaction.user.id;
+                const draft = userConfigDrafts.get(userId) || {};
+                if (id === 'userconf_select_participate') {
+                    draft.participate = (val === 'true');
+                } else {
+                    draft.pinned = (val === 'true');
+                }
+                userConfigDrafts.set(userId, draft);
+                await interaction.reply({ content: `Choice saved temporarily. Press Save to persist.`, ephemeral: true });
+            }
+        } catch (err) {
+            logger.error('Error handling userconf select:', err);
+            await interaction.reply({ content: 'Failed to process selection.', ephemeral: true });
+        }
+        return;
+    }
+
+    if (interaction.isButton && interaction.isButton()) {
+        const id = interaction.customId;
+        const userId = interaction.user.id;
+        try {
+            if (id === 'userconf_save') {
+                const draft = userConfigDrafts.get(userId) || {};
+                const cur = await getUserConfig(userId);
+                const participate = (typeof draft.participate === 'boolean') ? draft.participate : cur.participate;
+                const pinned = (typeof draft.pinned === 'boolean') ? draft.pinned : cur.pinned;
+                try {
+                    await setUserConfig(userId, { participate, pinned });
+                    userConfigDrafts.delete(userId);
+                    await interaction.reply({ content: `Updated your config — participate: ${participate}, pinned: ${pinned}`, ephemeral: true });
+                } catch (err) {
+                    logger.error('Failed to save user config:', err);
+                    await interaction.reply({ content: 'Failed to save configuration.', ephemeral: true });
+                }
+            } else if (id === 'userconf_cancel') {
+                userConfigDrafts.delete(userId);
+                await interaction.reply({ content: 'Cancelled.', ephemeral: true });
+            }
+        } catch (err) {
+            logger.error('Error handling userconf button:', err);
+            await interaction.reply({ content: 'Failed to process action.', ephemeral: true });
+        }
+        return;
+    }
+
+    if (interaction.isModalSubmit && interaction.isModalSubmit()) {
+        if (interaction.customId === 'userconf_modal') {
+            try {
+                const participateVal = interaction.fields.getTextInputValue('participate') || 'true';
+                const pinnedVal = interaction.fields.getTextInputValue('pinned') || 'true';
+
+                const parseBool = (v) => {
+                    if (typeof v !== 'string') return true;
+                    const s = v.trim().toLowerCase();
+                    return (s === '1' || s === 'true' || s === 'yes' || s === 'y');
+                };
+
+                const participate = parseBool(participateVal);
+                const pinned = parseBool(pinnedVal);
+
+                await setUserConfig(interaction.user.id, { participate, pinned });
+                logger.info(`${interaction.user.tag} updated userconf via modal: participate=${participate}, pinned=${pinned}`);
+                await interaction.reply({ content: `Updated your config — participate: ${participate}, pinned: ${pinned}`, ephemeral: true });
+            } catch (err) {
+                logger.error('Failed to handle userconf modal submit:', err);
+                try { await interaction.reply({ content: 'Failed to update configuration.', ephemeral: true }); } catch (e) { logger.error(e); }
+            }
+            return;
+        }
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);

@@ -15,6 +15,19 @@ function initDB(dbPath) {
             )
         `);
     });
+
+    _db.serialize(() => {
+        _db.all("PRAGMA table_info('users')", (err, cols) => {
+            if (err) return;
+            const names = (cols || []).map(c => c.name);
+            if (!names.includes('participate')) {
+                _db.run("ALTER TABLE users ADD COLUMN participate INTEGER DEFAULT 1");
+            }
+            if (!names.includes('pinned')) {
+                _db.run("ALTER TABLE users ADD COLUMN pinned INTEGER DEFAULT 1");
+            }
+        });
+    });
 }
 
 function getDB() {
