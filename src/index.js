@@ -3,7 +3,7 @@ const { Command } = require('commander');
 const fs = require('fs');
 const path = require('path');
 const { getKey, initConfig } = require('./backend/config.js');
-const { addTextXP, getUserXP, getUserConfig, setUserConfig } = require('./backend/algorithm.js');
+const { addTextXP, getUserXP, getUserConfig, setUserConfig, calculateLevel } = require('./backend/algorithm.js');
 const { initDB } = require('./backend/sql.js');
 const loggerModule = require('./logger');
 
@@ -83,6 +83,19 @@ client.on('messageCreate', async (message) => {
     const last = usersCooldown.get(message.author.id) || 0;
 
     if (now - last >= TEXT_COOLDOWN) {
+        let userConf = { participate: true, pinged: true };
+        try {
+            userConf = await getUserConfig(message.author.id);
+        } catch (err) {
+            logger.error('Failed to read user config, defaulting to participate/pinged true:', err);
+            userConf = { participate: true, pinged: true };
+        }
+
+        if (!userConf.participate) {
+            logger.info(`${message.author.tag} opted out of leveling.`);
+            return;
+        }
+
         const baseXp = Math.floor(Math.random() * getKey('textXP').maxGain) + getKey('textXP').minGain;
         const multipliers = getKey('multipliers') || {};
         let roleMultiplier = 1.0;
@@ -100,11 +113,39 @@ client.on('messageCreate', async (message) => {
 
         const xpGain = Math.max(0, Math.floor(baseXp * roleMultiplier));
         if (roleMultiplier !== 1.0) logger.debug(`Applied role multiplier ${roleMultiplier} to user ${message.author.id}, base ${baseXp} -> ${xpGain}`);
-        addTextXP(message.author.id, xpGain);
-        usersCooldown.set(message.author.id, now);
 
-        const userXP = await getUserXP(message.author.id);
-        logger.info(`${message.author.tag} now has TextXP: ${userXP.textxp}, VoiceXP: ${userXP.voicexp}`);
+        try {
+            const prevLevel = await calculateLevel(message.author.id);
+            addTextXP(message.author.id, xpGain);
+            usersCooldown.set(message.author.id, now);
+
+            const newLevel = await calculateLevel(message.author.id);
+            const userXP = await getUserXP(message.author.id);
+            logger.info(`${message.author.tag} gained ${xpGain} TextXP -> TextXP: ${userXP.textxp}, VoiceXP: ${userXP.voicexp}`);
+
+            if (newLevel > prevLevel) {
+                logger.info(`${message.author.tag} leveled up: ${prevLevel} -> ${newLevel}`);
+                if (userConf.pinged) {
+                    const logChannelId = getKey('levelup_notification_channel_id');
+                    let channel = null;
+                    if (logChannelId) {
+                        channel = message.client.channels.cache.get(logChannelId);
+                        if (!channel) {
+                            try { channel = await message.client.channels.fetch(logChannelId); } catch (e) { channel = null; }
+                        }
+                    }
+                    if (!channel) channel = message.channel;
+
+                    try {
+                        await channel.send({ content: `<@${message.author.id}> leveled up to **${newLevel}**! Congratulations!` });
+                    } catch (sendErr) {
+                        logger.error('Failed to send level-up ping:', sendErr);
+                    }
+                }
+            }
+        } catch (err) {
+            logger.error('Error during leveling flow:', err);
+        }
     } else {
         const remaining = Math.ceil((TEXT_COOLDOWN - (now - last)) / 1000);
         logger.info(`${message.author.tag} is on cooldown. ${remaining} seconds remaining.`);
