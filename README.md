@@ -26,6 +26,8 @@ This is the main part of the bot. Each instance on each guild needs it own confi
     "multipliers": {
         "XXXXXXXXX": 1.5
     }
+    ,
+    "levelup_notification_channel_id": "XXXXXXXXX"
 }
 ```
 - `token`: The token for the Discord Bot
@@ -40,14 +42,32 @@ This is the main part of the bot. Each instance on each guild needs it own confi
     - `cooldown`: A cooldown in seconds for when the next second should be evaluated
 - `multipliers`: An object of a pair of role IDs and a multiplication value (like 1.5) for more information see below
 
+- `levelup_notification_channel_id`: Optional channel ID where level-up pings (mentions) will be sent. If not set or invalid the bot falls back to the channel where the user sent the message.
+
 # Per user config
-TODO, WIP, whatever you want to call it
+Each user can opt in/out of the leveling system and control whether they want to be pinged on level-up.
+
+- `participate`: when `true` the user will receive XP from text/voice activity. When `false` they are ignored by the leveling system.
+- `pinged`: when `true` the bot will @mention the user when they level up (if a level-up notification channel is configured).
+
+Users can view/update these settings with the `/userconf` and `/viewuserconf` commands.
 
 # Multipliers
 This bot has the ability to give certain roles in the server different XP multipliers, so for example the Supporter role can get a 1.5 times multiplier because they are showing support. You can edit this in JSON but I recommend to use the `/setmp`, `/removemp` commands to set and remove multipliers. These multipliers can be viewed by everyone with the `/viewmp` command. These commands automatically write to the JSON configuration file
 
 # Algorithm
 This section talks about the leveling algorithm. The basic idea is that for each message you can get a random about of XP (specified by `textXP.minGain` and `textXP.maxGain`). Each message can get a value. This value will then be added to the users total XP. Now the cooldown specifies how long it takes for the next message to be rewarded. So for example if the cooldown is 120 seconds (2 minutes), when you send message it counts down from 120 seconds and while that countdown is not 0, you will not get rewarded for each message. As soon as the cooldown reaches 0, the next message you send will get rewarded again and the countdown will be restarted.
+
+Level formula
+- The bot computes a user's level from their total XP (textxp + voicexp) using the formula:
+
+    level = floor(0.1 * sqrt(totalXP))
+
+- Solving for totalXP gives the threshold for level L as totalXP >= 100 * L^2. Examples:
+    - Level 1: totalXP >= 100 (users with no DB row default to level 1)
+    - Level 2: totalXP >= 400
+    - Level 3: totalXP >= 900
+    - Level 4: totalXP >= 1600
 
 # How to run the bot
 First create a config, I recommend to use the example one as a base. Then you can run `node src/index.js --config path/to/config.json` and the bot should be up and running! You can verify by running the `/ping` command in your server!
@@ -62,3 +82,19 @@ The whole point of writing this bot is to replace another XP bot (ProBot). This 
 }
 ```
 Blåhaj will migrate the XP from this file into the database file
+
+# Commands
+Below are the slash commands the bot exposes and their purpose (may vary by version):
+
+- `addxp`: Admin helper to add XP to a user (shorthand for manual adjustments).
+- `setxp`: Admin command to set a user's XP to a specific value.
+- `subxp`: Admin helper to subtract XP from a user.
+- `setmp`: Set a role XP multiplier in the config (e.g., give a role 1.5x XP).
+- `removemp`: Remove a role multiplier previously set via `setmp`.
+- `viewmp`: View configured role multipliers.
+- `top`: Show the leaderboard / top users by total XP.
+- `userconf`: Open a menu for the calling user to change their `participate` and `pinged` preferences.
+- `viewuserconf`: View another user's per-user preferences (requires Administrator to view others).
+- `ping`: Diagnostic command to check bot responsiveness.
+
+If you add/remove commands in code, re-register them by restarting the bot (the bot registers guild commands on startup).
