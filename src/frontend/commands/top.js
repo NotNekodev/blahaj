@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getDB } = require('../../backend/sql.js');
+const logger = require('../../logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -29,7 +30,7 @@ module.exports = {
 
         db.all('SELECT userid, textxp, voicexp FROM users ORDER BY (textxp + voicexp) DESC', async (err, allRows) => {
             if (err) {
-                console.error(err);
+                logger.error(err);
                 await interaction.editReply('An error occurred while fetching top users.');
                 return;
             }

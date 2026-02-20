@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getKey } = require('../../backend/config.js');
 const { addTextXP } = require('../../backend/algorithm.js');
+const logger = require('../../logger');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -23,14 +24,14 @@ module.exports = {
         const textxp = interaction.options.getInteger('textxp');
         const user = interaction.options.getUser('user');
 
-        console.log(`${interaction.user.tag} adding TextXP to ${textxp} for user ${user.tag} (${user.id})`);
+        logger.info(`${interaction.user.tag} adding TextXP to ${textxp} for user ${user.tag} (${user.id})`);
 
         const log_channel_id = getKey('log_channel_id');
         const log_channel = client.channels.cache.get(log_channel_id);
         if (log_channel) {
             log_channel.send(`<@${interaction.user.id}> added TextXP to \`${textxp}\` for user <@${user.id}> (${user.id})`);
         } else {
-            console.warn("No log channel found! Logging administrator actions is highly recommended!");
+            logger.warn("No log channel found! Logging administrator actions is highly recommended!");
         }
 
         addTextXP(user.id, textxp);

@@ -5,6 +5,7 @@ const path = require('path');
 const { getKey, initConfig } = require('./backend/config.js');
 const { addTextXP, getUserXP } = require('./backend/algorithm.js');
 const { initDB } = require('./backend/sql.js');
+const loggerModule = require('./logger');
 
 const program = new Command();
 program.option('-m, --migrate-xp <file>', 'migrate XP data from a JSON file');
@@ -13,6 +14,9 @@ program.parse(process.argv);
 const options = program.opts();
 
 initConfig(options.config);
+
+loggerModule.configure({ logFile: getKey('log_file') || undefined });
+const logger = loggerModule.getLogger();
 
 initDB(getKey('database_path') || './levels.db');
 
@@ -39,17 +43,17 @@ for (const file of commandFiles) {
 }
 
 client.once('clientReady', async () => {
-    console.log(`Logged in as ${client.user.tag}`);
+    logger.info(`Logged in as ${client.user.tag}`);
 
     if (options.migrateXp) {
         if (!fs.existsSync(options.migrateXp)) {
-            console.error('XP file not found!');
+            logger.error('XP file not found!');
             return;
         }
         const xpData = JSON.parse(fs.readFileSync(options.migrateXp));
         for (const [userid, xp] of Object.entries(xpData)) {
             addTextXP(userid, xp);
-            console.debug(`Migrated XP for user ${userid}: TextXP ${xp}`);
+            logger.debug(`Migrated XP for user ${userid}: TextXP ${xp}`);
         }
     }
 
@@ -64,10 +68,10 @@ client.once('clientReady', async () => {
             ),
             { body: commandsJSON }
         );
-        console.log('Registered following slash commands:');
-        client.commands.forEach(cmd => console.log(`- ${cmd.data.name}`));
+        logger.info('Registered following slash commands:');
+        client.commands.forEach(cmd => logger.info(`- ${cmd.data.name}`));
     } catch (err) {
-        console.error('Failed to register commands:', err);
+        logger.error('Failed to register commands:', err);
     }
 });
 
@@ -83,10 +87,10 @@ client.on('messageCreate', async (message) => {
         usersCooldown.set(message.author.id, now);
 
         const userXP = await getUserXP(message.author.id);
-        console.log(`${message.author.tag} now has TextXP: ${userXP.textxp}, VoiceXP: ${userXP.voicexp}`);
+        logger.info(`${message.author.tag} now has TextXP: ${userXP.textxp}, VoiceXP: ${userXP.voicexp}`);
     } else {
         const remaining = Math.ceil((TEXT_COOLDOWN - (now - last)) / 1000);
-        console.log(`${message.author.tag} is on cooldown. ${remaining} seconds remaining.`);
+        logger.info(`${message.author.tag} is on cooldown. ${remaining} seconds remaining.`);
     }
 });
 
@@ -99,7 +103,7 @@ client.on('interactionCreate', async (interaction) => {
     try {
         await command.execute(interaction, client);
     } catch (err) {
-        console.error(err);
+        logger.error(err);
         try {
             if (interaction.deferred || interaction.replied) {
                 await interaction.editReply({ content: 'Error executing command.', ephemeral: true });
@@ -107,7 +111,7 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.reply({ content: 'Error executing command.', ephemeral: true });
             }
         } catch (replyErr) {
-            console.error('Failed to send error reply for interaction:', replyErr);
+            logger.error('Failed to send error reply for interaction:', replyErr);
         }
     }
 });
@@ -116,5 +120,6 @@ client.login(getKey('token'));
 
 module.exports = {
     options,
-    client
+    client,
+    logger
 };
