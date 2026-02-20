@@ -5,7 +5,7 @@ let instance = null;
 
 function configure(options = {}) {
     if (instance) return instance;
-    const logFile = options.logFile || path.join(process.cwd(), 'nb-level-bot.log');
+    const logFile = options.logFile || path.join(process.cwd(), 'blahaj.log');
     instance = new LoggerClass(logFile);
     return instance;
 }

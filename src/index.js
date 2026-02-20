@@ -82,7 +82,23 @@ client.on('messageCreate', async (message) => {
     const last = usersCooldown.get(message.author.id) || 0;
 
     if (now - last >= TEXT_COOLDOWN) {
-        const xpGain = Math.floor(Math.random() * getKey('textXP').maxGain) + getKey('textXP').minGain;
+        const baseXp = Math.floor(Math.random() * getKey('textXP').maxGain) + getKey('textXP').minGain;
+        const multipliers = getKey('multipliers') || {};
+        let roleMultiplier = 1.0;
+        try {
+            if (message.member && message.member.roles && message.member.roles.cache) {
+                for (const role of message.member.roles.cache.values()) {
+                    const m = multipliers[role.id];
+                    const num = typeof m === 'number' ? m : parseFloat(m);
+                    if (!Number.isNaN(num) && num > roleMultiplier) roleMultiplier = num;
+                }
+            }
+        } catch (err) {
+            logger.error('Failed to compute role multiplier:', err);
+        }
+
+        const xpGain = Math.max(0, Math.floor(baseXp * roleMultiplier));
+        if (roleMultiplier !== 1.0) logger.debug(`Applied role multiplier ${roleMultiplier} to user ${message.author.id}, base ${baseXp} -> ${xpGain}`);
         addTextXP(message.author.id, xpGain);
         usersCooldown.set(message.author.id, now);
 
