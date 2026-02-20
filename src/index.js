@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { getKey, initConfig } = require('./backend/config.js');
 const { addTextXP, getUserXP } = require('./backend/algorithm.js');
+const { initDB } = require('./backend/sql.js');
 
 const program = new Command();
 program.option('-m, --migrate-xp <file>', 'migrate XP data from a JSON file');
@@ -12,6 +13,8 @@ program.parse(process.argv);
 const options = program.opts();
 
 initConfig(options.config);
+
+initDB(getKey('database_path') || './levels.db');
 
 const usersCooldown = new Map();
 const TEXT_COOLDOWN = getKey('textXP').cooldown * 1000;
@@ -97,7 +100,15 @@ client.on('interactionCreate', async (interaction) => {
         await command.execute(interaction, client);
     } catch (err) {
         console.error(err);
-        await interaction.reply({ content: 'Error executing command.', ephemeral: true });
+        try {
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({ content: 'Error executing command.', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'Error executing command.', ephemeral: true });
+            }
+        } catch (replyErr) {
+            console.error('Failed to send error reply for interaction:', replyErr);
+        }
     }
 });
 

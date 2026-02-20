@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { db } = require('../../backend/sql.js');
+const { getDB } = require('../../backend/sql.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,14 +16,32 @@ module.exports = {
         const pageSize = 10;
         const offset = (page - 1) * pageSize;
 
+        const db = getDB();
+        if (!db) {
+            const embed = new EmbedBuilder()
+                .setColor(0xA7D379)
+                .setTitle('Database not initialized')
+                .setDescription('The database is not ready yet. Please try again later.')
+                .setTimestamp();
+            await interaction.editReply({ embeds: [embed] });
+            return;
+        }
+
         db.all('SELECT userid, textxp, voicexp FROM users ORDER BY (textxp + voicexp) DESC', async (err, allRows) => {
             if (err) {
                 console.error(err);
-                return interaction.reply('An error occurred while fetching top users.');
+                await interaction.editReply('An error occurred while fetching top users.');
+                return;
             }
 
-            if (!allRows.length) {
-                return interaction.reply('No users found.');
+            if (!allRows || !allRows.length) {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA7D379)
+                    .setTitle('No users found')
+                    .setDescription('No users have gained any XP yet.')
+                    .setTimestamp();
+                await interaction.editReply({ embeds: [embed] });
+                return;
             }
 
             const userRank = allRows.findIndex(r => r.userid === interaction.user.id) + 1;
